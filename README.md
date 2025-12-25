@@ -1,110 +1,164 @@
-# FHEVM Hardhat Template
+# CipherWars
 
-A Hardhat-based template for developing Fully Homomorphic Encryption (FHE) enabled Solidity smart contracts using the
-FHEVM protocol by Zama.
+CipherWars is an encrypted city-building strategy game built on the FHEVM protocol. Players receive encrypted gold,
+choose a building type privately, and see only their own decrypted results. The contract enforces costs and balances
+without ever exposing the underlying values on-chain.
 
-## Quick Start
+## Overview
 
-For detailed instructions see:
-[FHEVM Hardhat Quick Start Tutorial](https://docs.zama.ai/protocol/solidity-guides/getting-started/quick-start-tutorial)
+CipherWars is a compact, privacy-first on-chain game. It uses Fully Homomorphic Encryption (FHE) to keep player
+balances and building choices confidential while preserving deterministic gameplay rules. The result is a simple
+economy that is auditable yet strategically opaque.
+
+## Game Rules
+
+- Each player joins once and receives 10,000 encrypted gold.
+- Players choose one of four building types, submitted as encrypted input.
+- Building costs (in gold): type 1 = 100, type 2 = 200, type 3 = 400, type 4 = 1,000.
+- The contract computes the cost and balance changes over encrypted values only.
+- Building type is stored encrypted and can be decrypted by the player.
+- If the encrypted input is invalid, the system defaults to the most expensive cost.
+
+## Problems Solved
+
+- Protects player strategy by hiding building choices on-chain.
+- Keeps in-game balances private while still enforcing spending rules.
+- Removes information leakage that typically fuels copycat strategies and price manipulation.
+- Enables verifiable gameplay without centralized servers or trusted intermediaries.
+
+## Advantages
+
+- Privacy by default: no plaintext balances or choices are stored on-chain.
+- Deterministic economics: fixed costs and deterministic selection logic, even with encrypted inputs.
+- Player-controlled visibility: only the player can decrypt their data.
+- Minimal trust: all core rules live in the contract and are enforced by FHE.
+- Simple integration: a small surface area with clear tasks for join, build, and decrypt.
+
+## Tech Stack
+
+- Smart contracts: Solidity 0.8.27 with Zama FHEVM libraries
+- Contract framework: Hardhat with hardhat-deploy and @fhevm/hardhat-plugin
+- Frontend: React + Vite
+- Wallet and chain: RainbowKit + wagmi
+- Reads: viem
+- Writes: ethers v6
+- Encrypted client flows: @zama-fhe/relayer-sdk
+
+## Architecture
+
+- `contracts/`: core game logic, encrypted balance and building state
+- `deploy/`: deployment scripts for local node and Sepolia
+- `tasks/`: CLI helpers for join, build, and decryption
+- `test/`: unit and network tests (local and Sepolia)
+- `deployments/`: network artifacts and ABI outputs
+- `src/`: React frontend application (kept separate from root)
+
+## Smart Contract Details
+
+Contract: `CipherWars`
+
+Key functions:
+- `joinGame()`: mints 10,000 encrypted gold for the caller.
+- `constructBuilding(externalEuint32, bytes)`: submits an encrypted building type and updates state.
+- `getBalance(address)`: returns the encrypted balance for a player address.
+- `getBuilding(address)`: returns the encrypted building type for a player address.
+- `hasJoined(address)`: returns whether the player has joined.
+
+Events:
+- `GameJoined(address player)`
+- `BuildingConstructed(address player, euint32 buildingType, euint64 cost, euint64 remainingBalance)`
+
+Encryption and access control:
+- Balances and buildings are stored as encrypted values (`euint64`, `euint32`).
+- The contract allows access to itself and the player so the player can decrypt.
+- View functions accept an explicit player address and never depend on `msg.sender`.
+
+## Frontend Details
+
+- The frontend targets Sepolia and avoids localhost networks.
+- Reads use viem; writes use ethers to match encryption input flows.
+- Encryption and decryption are handled via the Zama relayer SDK.
+- Contract ABI and address are defined in `src/src/config/contracts.ts`.
+
+## ABI and Frontend Sync
+
+The frontend ABI must match the deployed contract ABI. After deploying to Sepolia:
+- Copy the ABI from `deployments/sepolia` into `src/src/config/contracts.ts`.
+- Update the contract address in the same file.
+
+## Developer Workflow
 
 ### Prerequisites
 
-- **Node.js**: Version 20 or higher
-- **npm or yarn/pnpm**: Package manager
+- Node.js 20+
+- npm
 
-### Installation
+### Install
 
-1. **Install dependencies**
-
-   ```bash
-   npm install
-   ```
-
-2. **Set up environment variables**
-
-   ```bash
-   npx hardhat vars set MNEMONIC
-
-   # Set your Infura API key for network access
-   npx hardhat vars set INFURA_API_KEY
-
-   # Optional: Set Etherscan API key for contract verification
-   npx hardhat vars set ETHERSCAN_API_KEY
-   ```
-
-3. **Compile and test**
-
-   ```bash
-   npm run compile
-   npm run test
-   ```
-
-4. **Deploy to local network**
-
-   ```bash
-   # Start a local FHEVM-ready node
-   npx hardhat node
-   # Deploy to local network
-   npx hardhat deploy --network localhost
-   ```
-
-5. **Deploy to Sepolia Testnet**
-
-   ```bash
-   # Deploy to Sepolia
-   npx hardhat deploy --network sepolia
-   # Verify contract on Etherscan
-   npx hardhat verify --network sepolia <CONTRACT_ADDRESS>
-   ```
-
-6. **Test on Sepolia Testnet**
-
-   ```bash
-   # Once deployed, you can run a simple test on Sepolia.
-   npx hardhat test --network sepolia
-   ```
-
-## 📁 Project Structure
-
-```
-fhevm-hardhat-template/
-├── contracts/           # Smart contract source files
-│   └── FHECounter.sol   # Example FHE counter contract
-├── deploy/              # Deployment scripts
-├── tasks/               # Hardhat custom tasks
-├── test/                # Test files
-├── hardhat.config.ts    # Hardhat configuration
-└── package.json         # Dependencies and scripts
+```bash
+npm install
 ```
 
-## 📜 Available Scripts
+### Compile and Test (Local)
 
-| Script             | Description              |
-| ------------------ | ------------------------ |
-| `npm run compile`  | Compile all contracts    |
-| `npm run test`     | Run all tests            |
-| `npm run coverage` | Generate coverage report |
-| `npm run lint`     | Run linting checks       |
-| `npm run clean`    | Clean build artifacts    |
+```bash
+npm run compile
+npm run test
+```
 
-## 📚 Documentation
+### Run a Local Node and Deploy
 
-- [FHEVM Documentation](https://docs.zama.ai/fhevm)
-- [FHEVM Hardhat Setup Guide](https://docs.zama.ai/protocol/solidity-guides/getting-started/setup)
-- [FHEVM Testing Guide](https://docs.zama.ai/protocol/solidity-guides/development-guide/hardhat/write_test)
-- [FHEVM Hardhat Plugin](https://docs.zama.ai/protocol/solidity-guides/development-guide/hardhat)
+Start a local node (Hardhat or Anvil) on `127.0.0.1:8545`, then deploy:
 
-## 📄 License
+```bash
+npx hardhat deploy --network anvil
+```
 
-This project is licensed under the BSD-3-Clause-Clear License. See the [LICENSE](LICENSE) file for details.
+### Deploy to Sepolia
 
-## 🆘 Support
+The Hardhat config reads `PRIVATE_KEY`, `INFURA_API_KEY`, and `ETHERSCAN_API_KEY` from `.env`. The deployer uses
+`PRIVATE_KEY` and Infura for Sepolia access.
 
-- **GitHub Issues**: [Report bugs or request features](https://github.com/zama-ai/fhevm/issues)
-- **Documentation**: [FHEVM Docs](https://docs.zama.ai)
-- **Community**: [Zama Discord](https://discord.gg/zama)
+```bash
+npx hardhat deploy --network sepolia
+```
 
----
+### Run Sepolia Tests
 
-**Built with ❤️ by the Zama team**
+```bash
+npx hardhat test --network sepolia
+```
+
+## Useful Tasks
+
+```bash
+npx hardhat task:address
+npx hardhat task:join
+npx hardhat task:construct --type 1
+npx hardhat task:decrypt-balance
+npx hardhat task:decrypt-building
+```
+
+## Frontend Workflow
+
+From `src/`:
+
+```bash
+npm install
+npm run dev
+```
+
+Ensure the contract address and ABI are up to date before running the frontend.
+
+## Future Plans
+
+- Add multiple building slots and per-player city layouts.
+- Introduce encrypted resource production and upkeep.
+- Enable encrypted leaderboards with proof of ranking without disclosing values.
+- Add multiplayer events with private bidding and rewards.
+- Expand UI to visualize encrypted history and transaction receipts.
+- Add gas and latency profiling for larger encrypted state updates.
+
+## License
+
+This project is licensed under the BSD-3-Clause-Clear License. See `LICENSE` for details.
